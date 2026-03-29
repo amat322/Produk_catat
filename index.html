@@ -25,14 +25,15 @@
         .kat-header { background: #34495e; color: white; padding: 8px 12px; font-size: 13px; font-weight: bold; border-radius: 6px; margin-top: 15px; }
         table { width: 100%; border-collapse: collapse; }
         td { padding: 10px; border-bottom: 1px solid #eee; font-size: 13px; }
-        .stok-kosong { color: white; background: #e74c3c; padding: 2px 5px; border-radius: 4px; font-size: 10px; }
+        
+        /* Indikator Stok */
+        .stok-badge { padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; color: white; }
+        .bg-red { background: #e74c3c; }    /* Habis */
+        .bg-yellow { background: #f1c40f; color: #333; } /* Sedikit */
+        .bg-green { background: #2ecc71; }  /* Aman */
+
         .btn-edit { background: #f1c40f; color: #333; padding: 6px; font-size: 12px; width: auto; margin-right: 5px; }
         .btn-del { background: #e74c3c; color: white; padding: 6px; font-size: 12px; width: auto; }
-        
-        /* List Kategori di Pengaturan */
-        .kat-item-list { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee; }
-        .kat-item-list span { font-weight: bold; font-size: 14px; }
-        
         footer { text-align: center; padding: 20px; font-size: 11px; color: #bdc3c7; }
     </style>
 </head>
@@ -83,16 +84,20 @@
             <button class="btn-blue" onclick="updateShopName()">💾 Simpan Nama Toko</button>
         </div>
         <div class="card">
+            <h3>⚠️ Batas Stok Sedikit</h3>
+            <p style="font-size: 11px; color: #7f8c8d; margin-bottom: 5px;">Jika stok di bawah angka ini, warna jadi kuning (🟡)</p>
+            <input type="number" id="limitInput" placeholder="Contoh: 5">
+            <button class="btn-blue" style="background:#f39c12" onclick="updateLimit()">Simpan Batas Stok</button>
+        </div>
+        <div class="card">
             <h3>🛠️ Kelola Kategori</h3>
             <div style="display:flex; gap:5px; margin-bottom:10px">
-                <input type="text" id="newKat" placeholder="Nama Kategori Baru" style="margin-bottom:0">
+                <input type="text" id="newKat" placeholder="Kategori Baru" style="margin-bottom:0">
                 <button class="btn-green" style="width:100px" onclick="addCategory()">Tambah</button>
             </div>
             <div id="listKategoriEdit"></div>
         </div>
         <div class="card">
-            <h3>💾 Backup & Reset</h3>
-            <button class="btn-green" style="background:#8e44ad; margin-bottom:10px" onclick="exportExcel()">📤 Simpan ke Excel</button>
             <button class="btn-del" style="width:100%; padding:12px" onclick="clearAllData()">🗑️ HAPUS SEMUA DATA</button>
         </div>
     </div>
@@ -104,15 +109,25 @@
     let shopName = localStorage.getItem('amatShopName') || "AMAT BAJUALAN";
     let categories = JSON.parse(localStorage.getItem('amatCategories')) || ["ROKOK", "MIE", "MINUMAN", "LAINNYA"];
     let products = JSON.parse(localStorage.getItem('amatBajualanData')) || [];
+    let stockLimit = parseInt(localStorage.getItem('amatStockLimit')) || 5;
     let editIdx = -1;
 
     function initApp() {
         document.getElementById('shopTitleDisplay').innerText = "📦 " + shopName;
         document.getElementById('tabTitle').innerText = shopName;
         document.getElementById('shopNameInput').value = shopName;
+        document.getElementById('limitInput').value = stockLimit;
         document.getElementById('footerDisplay').innerHTML = "<b>" + shopName + "</b> by Gemini AI";
         updateKatSelect();
-        renderKatSettings();
+    }
+
+    function updateLimit() {
+        const val = document.getElementById('limitInput').value;
+        if(val !== "") {
+            stockLimit = parseInt(val);
+            localStorage.setItem('amatStockLimit', stockLimit);
+            alert("Batas stok kuning diubah ke: " + stockLimit);
+        }
     }
 
     function updateShopName() {
@@ -133,11 +148,10 @@
         document.getElementById('pKat').innerHTML = categories.map(k => `<option value="${k}">${k}</option>`).join('');
     }
 
-    // TAMPILKAN DAFTAR KATEGORI UNTUK DIHAPUS
     function renderKatSettings() {
         const container = document.getElementById('listKategoriEdit');
         container.innerHTML = categories.map((k, i) => `
-            <div class="kat-item-list">
+            <div style="display:flex; justify-content:space-between; padding:8px; border-bottom:1px solid #eee">
                 <span>${k}</span>
                 <button class="btn-del" style="width:auto" onclick="deleteCategory(${i})">Hapus</button>
             </div>
@@ -178,10 +192,14 @@
                 let html = `<div class="kat-header">${kat}</div><div class="card" style="padding:0"><table>`;
                 filtered.forEach((p) => {
                     const idx = products.indexOf(p);
-                    const status = p.stock <= 0 ? '<span class="stok-kosong">HABIS</span>' : `<b>${p.stock}</b>`;
+                    let statusClass = "bg-green";
+                    let emoticon = "🟢";
+                    if(p.stock <= 0) { statusClass = "bg-red"; emoticon = "🔴"; }
+                    else if(p.stock <= stockLimit) { statusClass = "bg-yellow"; emoticon = "🟡"; }
+
                     html += `<tr>
                         <td><b>${p.name}</b><br><small>Rp ${new Intl.NumberFormat('id-ID').format(p.price)}</small></td>
-                        <td style="text-align:center">${status}</td>
+                        <td style="text-align:center"><span class="stok-badge ${statusClass}">${emoticon} ${p.stock}</span></td>
                         <td style="text-align:right">
                             <button class="btn-edit" onclick="editProduct(${idx})">✏️</button>
                             <button class="btn-del" onclick="deleteProduct(${idx})">✖</button>
@@ -202,10 +220,22 @@
         const stock = document.getElementById('pStock').value;
         if (!name || !price) return alert("Isi Nama & Harga!");
         const data = { category: kat, name, price: parseInt(price), stock: parseInt(stock) || 0 };
-        if (editIdx === -1) { products.push(data); } 
-        else { products[editIdx] = data; editIdx = -1; resetForm(); }
-        document.getElementById('pName').value = ''; document.getElementById('pPrice').value = ''; document.getElementById('pStock').value = '';
-        renderTable(); openPage('list');
+        
+        if (editIdx === -1) { 
+            products.push(data); 
+            // Tetap di halaman ADD, cuma kasih alert sukses kecil
+            alert("✅ " + name + " ditambahkan!");
+        } else { 
+            products[editIdx] = data; 
+            editIdx = -1; 
+            resetForm(); 
+            alert("✅ Data diperbarui!");
+            openPage('list'); // Hanya pindah kalau selesai EDIT
+        }
+        
+        document.getElementById('pName').value = ''; 
+        document.getElementById('pPrice').value = ''; 
+        document.getElementById('pStock').value = '';
     }
 
     function resetForm() {
@@ -232,17 +262,23 @@
         }, {});
         for (const kat in grouped) {
             pesan += `*--- ${kat} ---*\n`;
-            grouped[kat].forEach(p => { pesan += `• ${p.name} - Rp ${new Intl.NumberFormat('id-ID').format(p.price)} (${p.stock<=0?'❌':'Stok:'+p.stock})\n`; });
+            grouped[kat].forEach(p => { 
+                let e = p.stock <= 0 ? "❌" : (p.stock <= stockLimit ? "⚠️" : "✅");
+                pesan += `${e} ${p.name} - Rp ${new Intl.NumberFormat('id-ID').format(p.price)}\n`; 
+            });
             pesan += "\n";
         }
         window.open((tipe==='biz'?'https://wa.me/':'https://api.whatsapp.com/send') + "?text=" + encodeURIComponent(pesan), '_blank');
     }
 
     function laporKeBos() {
-        const habis = products.filter(p => p.stock <= 0);
+        const habis = products.filter(p => p.stock <= stockLimit);
         if(habis.length === 0) return alert("Stok Aman!");
-        let pesan = `*LAPORAN STOK HABIS - ${shopName}*\n\n`;
-        habis.forEach((p, i) => { pesan += `${i+1}. *${p.name}* (${p.category})\n`; });
+        let pesan = `*LAPORAN RESTOK - ${shopName}*\n\n`;
+        habis.forEach((p, i) => { 
+            let s = p.stock <= 0 ? "HABIS" : "SISA " + p.stock;
+            pesan += `${i+1}. *${p.name}* (${s})\n`; 
+        });
         window.open("https://wa.me/?text=" + encodeURIComponent(pesan), '_blank');
     }
 
@@ -255,17 +291,11 @@
             const cols = line.split(/\t|  +/); 
             if (cols.length >= 2) { products.push({ category: kat, name: cols[0].trim(), price: parseInt(cols[1].replace(/[^0-9]/g, '')) || 0, stock: parseInt(cols[2]) || 0 }); }
         });
-        document.getElementById('pasteArea').value = ''; renderTable();
+        document.getElementById('pasteArea').value = ''; alert("Tempel Berhasil!");
     }
 
-    function deleteProduct(i) { if(confirm("Hapus barang?")) { products.splice(i, 1); renderTable(); } }
-    function clearAllData() { if(confirm("Hapus SEMUA data barang?")) { products = []; renderTable(); } }
-    function exportExcel() {
-        const ws = XLSX.utils.json_to_sheet(products);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Stok");
-        XLSX.writeFile(wb, shopName + "_Stok.xlsx");
-    }
+    function deleteProduct(i) { if(confirm("Hapus?")) { products.splice(i, 1); renderTable(); } }
+    function clearAllData() { if(confirm("Hapus SEMUA data?")) { products = []; renderTable(); } }
 
     initApp();
 </script>
