@@ -19,7 +19,7 @@
         .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 15px; }
         h3 { margin-bottom: 12px; font-size: 14px; color: #34495e; border-left: 4px solid #3498db; padding-left: 10px; }
         input, select, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; margin-bottom: 10px; }
-        button { padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; transition: 0.2s; }
+        button { padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; }
         .btn-green { background: #27ae60; color: white; }
         .btn-blue { background: #3498db; color: white; }
         .kat-header { background: #34495e; color: white; padding: 8px 12px; font-size: 13px; font-weight: bold; border-radius: 6px; margin-top: 15px; }
@@ -28,13 +28,17 @@
         .stok-kosong { color: white; background: #e74c3c; padding: 2px 5px; border-radius: 4px; font-size: 10px; }
         .btn-edit { background: #f1c40f; color: #333; padding: 6px; font-size: 12px; width: auto; margin-right: 5px; }
         .btn-del { background: #e74c3c; color: white; padding: 6px; font-size: 12px; width: auto; }
-        .wa-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+        
+        /* List Kategori di Pengaturan */
+        .kat-item-list { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee; }
+        .kat-item-list span { font-weight: bold; font-size: 14px; }
+        
         footer { text-align: center; padding: 20px; font-size: 11px; color: #bdc3c7; }
     </style>
 </head>
 <body>
 
-<div class="header"><h1 id="shopTitleDisplay">MEMUAT...</h1></div>
+<div class="header"><h1 id="shopTitleDisplay">GUDANG DIGITAL</h1></div>
 
 <div class="tab-menu">
     <button id="tab-add" class="tab-btn active" onclick="openPage('add')">ADD PRODUK</button>
@@ -62,12 +66,11 @@
     <div id="page-list" class="page">
         <input type="text" id="searchInp" placeholder="🔎 Cari barang..." onkeyup="renderTable()">
         <div id="kategoriContainer"></div>
-        
         <div class="card" style="margin-top:20px">
             <h3>Bagikan Katalog</h3>
-            <div class="wa-group">
-                <button style="background:#128C7E; color:white" onclick="shareWA('biz')">📲 WA BUSINESS</button>
-                <button style="background:#25D366; color:white" onclick="shareWA('reg')">💬 WA BIASA</button>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px">
+                <button style="background:#128C7E; color:white; font-size:12px" onclick="shareWA('biz')">📲 WA BUSINESS</button>
+                <button style="background:#25D366; color:white; font-size:12px" onclick="shareWA('reg')">💬 WA BIASA</button>
             </div>
             <button style="background:#e67e22; color:white" onclick="laporKeBos()">📢 Lapor Barang Habis</button>
         </div>
@@ -75,14 +78,17 @@
 
     <div id="page-cfg" class="page">
         <div class="card">
-            <h3>🏫 Nama Toko / Usaha</h3>
-            <input type="text" id="shopNameInput" placeholder="Masukkan Nama Toko Anda...">
+            <h3>🏫 Nama Toko</h3>
+            <input type="text" id="shopNameInput">
             <button class="btn-blue" onclick="updateShopName()">💾 Simpan Nama Toko</button>
         </div>
         <div class="card">
             <h3>🛠️ Kelola Kategori</h3>
-            <input type="text" id="newKat" placeholder="Nama Kategori Baru">
-            <button class="btn-green" style="background:#3498db" onclick="addCategory()">Tambah Kategori</button>
+            <div style="display:flex; gap:5px; margin-bottom:10px">
+                <input type="text" id="newKat" placeholder="Nama Kategori Baru" style="margin-bottom:0">
+                <button class="btn-green" style="width:100px" onclick="addCategory()">Tambah</button>
+            </div>
+            <div id="listKategoriEdit"></div>
         </div>
         <div class="card">
             <h3>💾 Backup & Reset</h3>
@@ -92,7 +98,7 @@
     </div>
 </div>
 
-<footer id="footerDisplay">Dibuat oleh Gemini AI</footer>
+<footer id="footerDisplay"></footer>
 
 <script>
     let shopName = localStorage.getItem('amatShopName') || "AMAT BAJUALAN";
@@ -102,20 +108,16 @@
 
     function initApp() {
         document.getElementById('shopTitleDisplay').innerText = "📦 " + shopName;
-        document.getElementById('tabTitle').innerText = shopName + " - Gudang";
+        document.getElementById('tabTitle').innerText = shopName;
         document.getElementById('shopNameInput').value = shopName;
         document.getElementById('footerDisplay').innerHTML = "<b>" + shopName + "</b> by Gemini AI";
         updateKatSelect();
+        renderKatSettings();
     }
 
     function updateShopName() {
-        const newName = document.getElementById('shopNameInput').value.trim();
-        if (newName) {
-            shopName = newName.toUpperCase();
-            localStorage.setItem('amatShopName', shopName);
-            initApp();
-            alert("Nama Toko berhasil diubah jadi: " + shopName);
-        }
+        const n = document.getElementById('shopNameInput').value.trim();
+        if(n) { shopName = n.toUpperCase(); localStorage.setItem('amatShopName', shopName); initApp(); alert("Nama Toko Disimpan!"); }
     }
 
     function openPage(pageId) {
@@ -124,10 +126,40 @@
         document.getElementById('page-' + pageId).classList.add('active');
         document.getElementById('tab-' + pageId).classList.add('active');
         if(pageId === 'list') renderTable();
+        if(pageId === 'cfg') renderKatSettings();
     }
 
     function updateKatSelect() {
         document.getElementById('pKat').innerHTML = categories.map(k => `<option value="${k}">${k}</option>`).join('');
+    }
+
+    // TAMPILKAN DAFTAR KATEGORI UNTUK DIHAPUS
+    function renderKatSettings() {
+        const container = document.getElementById('listKategoriEdit');
+        container.innerHTML = categories.map((k, i) => `
+            <div class="kat-item-list">
+                <span>${k}</span>
+                <button class="btn-del" style="width:auto" onclick="deleteCategory(${i})">Hapus</button>
+            </div>
+        `).join('');
+    }
+
+    function addCategory() {
+        const n = document.getElementById('newKat').value.trim().toUpperCase();
+        if(n && !categories.includes(n)) {
+            categories.push(n);
+            localStorage.setItem('amatCategories', JSON.stringify(categories));
+            document.getElementById('newKat').value = '';
+            updateKatSelect(); renderKatSettings();
+        }
+    }
+
+    function deleteCategory(idx) {
+        if(confirm("Hapus kategori " + categories[idx] + "?")) {
+            categories.splice(idx, 1);
+            localStorage.setItem('amatCategories', JSON.stringify(categories));
+            updateKatSelect(); renderKatSettings();
+        }
     }
 
     function renderTable() {
@@ -169,16 +201,11 @@
         const price = document.getElementById('pPrice').value;
         const stock = document.getElementById('pStock').value;
         if (!name || !price) return alert("Isi Nama & Harga!");
-
         const data = { category: kat, name, price: parseInt(price), stock: parseInt(stock) || 0 };
         if (editIdx === -1) { products.push(data); } 
         else { products[editIdx] = data; editIdx = -1; resetForm(); }
-
-        document.getElementById('pName').value = '';
-        document.getElementById('pPrice').value = '';
-        document.getElementById('pStock').value = '';
-        renderTable();
-        openPage('list');
+        document.getElementById('pName').value = ''; document.getElementById('pPrice').value = ''; document.getElementById('pStock').value = '';
+        renderTable(); openPage('list');
     }
 
     function resetForm() {
@@ -187,9 +214,7 @@
     }
 
     function editProduct(idx) {
-        editIdx = idx;
-        const p = products[idx];
-        openPage('add');
+        editIdx = idx; const p = products[idx]; openPage('add');
         document.getElementById('pKat').value = p.category;
         document.getElementById('pName').value = p.name;
         document.getElementById('pPrice').value = p.price;
@@ -207,13 +232,10 @@
         }, {});
         for (const kat in grouped) {
             pesan += `*--- ${kat} ---*\n`;
-            grouped[kat].forEach(p => {
-                pesan += `• ${p.name} - Rp ${new Intl.NumberFormat('id-ID').format(p.price)} (${p.stock<=0?'❌':'Stok:'+p.stock})\n`;
-            });
+            grouped[kat].forEach(p => { pesan += `• ${p.name} - Rp ${new Intl.NumberFormat('id-ID').format(p.price)} (${p.stock<=0?'❌':'Stok:'+p.stock})\n`; });
             pesan += "\n";
         }
-        const api = tipe === 'biz' ? 'https://wa.me/' : 'https://api.whatsapp.com/send';
-        window.open(api + "?text=" + encodeURIComponent(pesan), '_blank');
+        window.open((tipe==='biz'?'https://wa.me/':'https://api.whatsapp.com/send') + "?text=" + encodeURIComponent(pesan), '_blank');
     }
 
     function laporKeBos() {
@@ -231,24 +253,13 @@
         text.split('\n').forEach(line => {
             if (line.toLowerCase().includes("nama")) return;
             const cols = line.split(/\t|  +/); 
-            if (cols.length >= 2) {
-                products.push({ category: kat, name: cols[0].trim(), price: parseInt(cols[1].replace(/[^0-9]/g, '')) || 0, stock: parseInt(cols[2]) || 0 });
-            }
+            if (cols.length >= 2) { products.push({ category: kat, name: cols[0].trim(), price: parseInt(cols[1].replace(/[^0-9]/g, '')) || 0, stock: parseInt(cols[2]) || 0 }); }
         });
         document.getElementById('pasteArea').value = ''; renderTable();
-        alert("Berhasil!");
     }
 
-    function addCategory() {
-        const n = document.getElementById('newKat').value.trim().toUpperCase();
-        if(n && !categories.includes(n)) {
-            categories.push(n); localStorage.setItem('amatCategories', JSON.stringify(categories));
-            document.getElementById('newKat').value = ''; updateKatSelect(); alert("Kategori ditambahkan!");
-        }
-    }
-    
-    function deleteProduct(i) { if(confirm("Hapus?")) { products.splice(i, 1); renderTable(); } }
-    function clearAllData() { if(confirm("Hapus SEMUA data?")) { products = []; renderTable(); } }
+    function deleteProduct(i) { if(confirm("Hapus barang?")) { products.splice(i, 1); renderTable(); } }
+    function clearAllData() { if(confirm("Hapus SEMUA data barang?")) { products = []; renderTable(); } }
     function exportExcel() {
         const ws = XLSX.utils.json_to_sheet(products);
         const wb = XLSX.utils.book_new();
@@ -256,7 +267,6 @@
         XLSX.writeFile(wb, shopName + "_Stok.xlsx");
     }
 
-    // Jalankan awal
     initApp();
 </script>
 </body>
